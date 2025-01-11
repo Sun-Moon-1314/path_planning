@@ -1,4 +1,6 @@
 
+from typing import Optional, Union
+
 import numpy as np
 import heapq
 import math
@@ -16,20 +18,42 @@ class Dijkstra:
         grid (numpy.ndarray): 栅格图的表示
     """
     __neighbors = {"上": (-1, 0), "下": (1, 0), "左": (0, -1), "右": (0, 1)}  # 上下左右
-    def __init__(self, graph = None, start = None, goal = None, is_grid = False):
-        # 是栅格图
+
+    def __init__(self,
+                 graph: Optional[Union[np.ndarray, list[list[int]], dict[str, dict[str, int]]]],
+                 start: tuple = None,
+                 goal: tuple = None,
+                 is_grid: bool = False
+                 ):
+        """
+        初始化 Dijkstra 类，支持多种输入格式的图。
+
+        Args:
+            graph: 输入的图，可以是以下三种形式：
+                - np.ndarray: 栅格图，二维数组
+                - List[List[int]]: 栅格图，嵌套列表
+                - Dict[str, Dict[str, int]]: 有向图的邻接表
+            start: 出发点，tuple
+            goal: 目标点, tuple
+            is_grid: 是否为栅格图，默认为 False。如果为 True，将根据栅格图生成有向图。
+        """
+        if not isinstance(graph, np.ndarray or list or dict):  # 如果是 NumPy 数组
+            raise TypeError("Graph must be a numpy.ndarray, nested list, or adjacency dictionary")
+        elif not isinstance(start, tuple) or isinstance(goal, tuple):  # 如果是邻接表
+            raise TypeError("start and goal must be a tuple.")
+        elif not isinstance(is_grid, bool):
+            raise TypeError("is_grid must be a bool.")
+
         if is_grid:
             self.__grid = graph
             self.__grid_size = len(graph[0])
             self._directed_map = self.__generate_direct_graph()
-        # 不是栅格图
         else:
             self._directed_map = graph
             self.__grid_size = len(graph.keys())
 
         self.__start = start
         self.__goal = goal
-
 
     @property
     def grid(self):
@@ -40,7 +64,7 @@ class Dijkstra:
         return self._directed_map
 
     @directed_map.setter
-    def directed_map(self, obstacles):
+    def directed_map(self, obstacles: list[tuple] = None):
         """
         设置图的障碍物
         :param obstacle:
@@ -48,7 +72,7 @@ class Dijkstra:
         """
         self.__set_obstacle(obstacles)
 
-    def __set_obstacle(self, obstacles):
+    def __set_obstacle(self, obstacles: list[tuple] = None):
         """
         设置障碍物
         :param obstacles:
@@ -64,10 +88,9 @@ class Dijkstra:
                     if obstacle in self._directed_map[node]:
                         del self._directed_map[node][obstacle]
 
-    @classmethod
     @property
-    def neighbors(cls):
-        return cls.__neighbors
+    def neighbors(self):
+        return self.__neighbors
 
     def __generate_direct_graph(self):
         """
@@ -80,7 +103,7 @@ class Dijkstra:
 
         for i in range(rows):
             for j in range(cols):
-                if self.__grid[i, j] == 0:  # 如果是障碍物，跳过
+                if self.__grid[i][j] == 0:  # 如果是障碍物，跳过
                     continue
 
                 node = (i, j)
@@ -89,28 +112,19 @@ class Dijkstra:
                 # 遍历邻居
                 for dx, dy in self.__neighbors.values():
                     ni, nj = i + dx, j + dy
-                    if 0 <= ni < rows and 0 <= nj < cols and self.__grid[ni, nj] != 0:
+                    if 0 <= ni < rows and 0 <= nj < cols and self.__grid[ni][nj] != 0:
                         # 只考虑可以通行的邻居节点
                         neighbor_node = (ni, nj)
                         directed_graph[node][neighbor_node] = 1  # 假设每个边的权重是 1（可以根据实际情况调整）
 
         return directed_graph
 
-    def set_grid_map(self, point_a, point_b):
-        """
-        设置权重
-        :param point_a:
-        :param point_b:
-        :return:
-        """
-        pass
-
-    def print_map(self):
+    def show_directed_map(self):
         # 打印邻接表
         for node, edges in self._directed_map.items():
             print(f"Node {node}: {edges}")
 
-    def compare_algorithm(self, distances1, distances2):
+    def compare_algorithm(self, distances1: dict, distances2: dict):
         """
         比较算法
         :param distances1:
@@ -127,8 +141,7 @@ class Dijkstra:
                 print(f"Less distance: distance2->:{distances2}")
                 print(f"distance1:{distances1}")
 
-
-    def search_dijkstra(self, graph = None, start = None, goal = None):
+    def search_dijkstra(self, graph: Optional[np.ndarray] = None, d_start: tuple = None, d_goal: tuple = None):
         """
         dijkstra寻路核心算法
         :param graph:
@@ -138,10 +151,10 @@ class Dijkstra:
         """
         if graph is None:
             graph = self._directed_map
-        if start is None:
-            start = self.__start
-        if goal is None:
-            goal = self.__goal
+        if d_start is None:
+            d_start = self.__start
+        if d_goal is None:
+            d_goal = self.__goal
         # 定义每个节点的距离记录表
         distances = {node: float('inf') for node in graph}
         # 每个点是否被访问过
@@ -149,20 +162,20 @@ class Dijkstra:
         # 定义前驱节点，比如邻居节点的前驱节点为当前节点
         previous_node = {node: None for node in graph}
         # 初始化优先队列
-        priority_queue = [(0, start)]
+        priority_queue = [(0, d_start)]
         # 初始化出发点的distances
-        distances[start] = 0
+        distances[d_start] = 0
         # 不断检查priority_queue，取出经过当前节点的最小距离的邻居节点
         while priority_queue:
             current_distance, current_node = heapq.heappop(priority_queue)
             flag[current_node] = True
-            if current_node == goal:
+            if current_node == d_goal:
                 path = []
                 # 当前节点有前驱节点，将当前节点插入到path，找到前驱节点，作为当前节点
                 while previous_node[current_node] is not None:
                     path.insert(0, current_node)
                     current_node = previous_node[current_node]
-                path.insert(0, start)
+                path.insert(0, d_start)
                 return path, distances, previous_node
             # 如果从优先队列中提取的点的当前的距离比distances中记录的当前点距离更长，说明a->c之间经过b更长，就不用更新distances
             if current_distance > distances[current_node]:
