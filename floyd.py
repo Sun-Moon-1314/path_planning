@@ -1,9 +1,5 @@
-from lib2to3.fixes.fix_tuple_params import map_to_index
 
 import numpy as np
-from fontTools.misc.psOperators import ps_boolean
-
-
 def graph_to_matrix(graph):
     nodes = list(graph.keys())
     num_nodes = len(nodes)
