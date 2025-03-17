@@ -1,9 +1,9 @@
-
 from typing import Optional, Union
 
 import numpy as np
 import heapq
 import math
+
 
 class Dijkstra:
     """
@@ -21,8 +21,8 @@ class Dijkstra:
 
     def __init__(self,
                  graph: Optional[Union[np.ndarray, list[list[int]], dict[str, dict[str, int]]]],
-                 start: tuple = None,
-                 goal: tuple = None,
+                 start: Union[tuple, str, None],
+                 goal: Union[tuple, str, None],
                  is_grid: bool = False
                  ):
         """
@@ -39,7 +39,7 @@ class Dijkstra:
         """
         if not isinstance(graph, np.ndarray or list or dict):  # 如果是 NumPy 数组
             raise TypeError("Graph must be a numpy.ndarray, nested list, or adjacency dictionary")
-        elif not isinstance(start, tuple) or isinstance(goal, tuple):  # 如果是邻接表
+        elif not isinstance(start, tuple or str) or not isinstance(goal, tuple or str):  # 如果是邻接表
             raise TypeError("start and goal must be a tuple.")
         elif not isinstance(is_grid, bool):
             raise TypeError("is_grid must be a bool.")
@@ -141,7 +141,10 @@ class Dijkstra:
                 print(f"Less distance: distance2->:{distances2}")
                 print(f"distance1:{distances1}")
 
-    def search_dijkstra(self, graph: Optional[np.ndarray] = None, d_start: tuple = None, d_goal: tuple = None):
+    def search_dijkstra(self, graph: Optional[np.ndarray] = None,
+                        d_start: tuple = None,
+                        d_goal: tuple = None
+                        ):
         """
         dijkstra寻路核心算法
         :param graph:
@@ -222,65 +225,81 @@ class Dijkstra:
         return grid
 
     @staticmethod
-    def distance_dijkstra(graph, start):
+    def distance_dijkstra(graph: dict[[str], int] = None,
+                          start: str = None,
+                          goal: str = None,
+                          is_get_path: bool = False
+                          ):
         """
         使用Dijkstra算法计算从起点到图中所有其他节点的最短路径。
 
         参数:
         - graph: 字典形式的加权图，键为节点，值为邻接节点及其边权重的字典。
         - start: 起始节点。
+        - goal: 终点
+        - is_get_path: 是否获取路径
 
         返回:
         - distances: 从起始节点到每个节点的最短距离字典。
+        - path: 路径点
         """
-        # 初始化距离字典，所有距离设为无穷大，起始节点距离设为0
-        distances = {node: float('infinity') for node in graph}
+        distances = {node: float("inf") for node in graph}
         distances[start] = 0
-
-        # 优先队列，存储待处理的节点及其当前距离
-        priority_queue = [(0, start)]
-
+        priority_queue = []
+        previous_node = {}
+        heapq.heappush(priority_queue, (start, distances[start]))
         while priority_queue:
-            # 弹出当前距离最小的节点
-            current_distance, current_node = heapq.heappop(priority_queue)
+            current_node, current_dis = heapq.heappop(priority_queue)
 
-            # 如果当前节点的距离大于已记录的距离，跳过
-            if current_distance > distances[current_node]:
+            if is_get_path:
+                if current_node == goal:
+                    path = []
+                    while current_node in previous_node:
+                        path.insert(0, current_node)
+                        current_node = previous_node[current_node]
+                    path.insert(0, start)
+                    return path
+
+            if current_dis > distances[current_node]:
                 continue
 
-            # 遍历当前节点的所有邻居
             for neighbor, weight in graph[current_node].items():
-                distance = current_distance + weight
+                neighbor_dis = weight + current_dis
+                if neighbor_dis < distances[neighbor]:
+                    distances[neighbor] = neighbor_dis
+                    heapq.heappush(priority_queue, (neighbor, neighbor_dis))
+                    previous_node[neighbor] = current_node
 
-                # 如果找到更短的路径，更新距离并加入优先队列
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    heapq.heappush(priority_queue, (distance, neighbor))
+        return []
 
-        return distances
 
 if __name__ == "__main__":
-    # direction_graph = {
-    #     'P1': {'P2': 5, 'P5': 20, 'P6': 40},
-    #     'P2': {'P3': 50},
-    #     'P3': {'P4': 20, 'P5': 10},
-    #     'P4': {'P5': 60},
-    #     'P5': {},
-    #     'P6': {'P2': 10, 'P4': 30, 'P5': 100}
-    # }
-    direction_graph = np.array([
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 1, 1],
-        [1, 1, 1, 0, 1],
-        [1, 0, 1, 1, 1],
-        [1, 1, 1, 1, 1]
-    ])
-
-    start = (0, 0)  # 起点
-    goal = (4, 4)  # 终点
-    obstacles = [(1, 1), (1, 2), (2, 1)]  # 障碍物位置
-    d = Dijkstra(graph=direction_graph, start=(0, 0),goal=(4, 3), is_grid=True)
-    d.directed_map = obstacles
-    path, dd, pre = d.search_dijkstra()
-    print(d.grids)
-    print(path)
+    # 有向图
+    direction_graph = {
+        'P1': {'P2': 5, 'P5': 20, 'P6': 40},
+        'P2': {'P3': 50},
+        'P3': {'P4': 20, 'P5': 10},
+        'P4': {'P5': 60},
+        'P5': {},
+        'P6': {'P2': 10, 'P4': 30, 'P5': 100}
+    }
+    dis = Dijkstra.distance_dijkstra(graph=direction_graph, start="P1", goal="P4", is_get_path=True)
+    for node in dis:
+        print(f"{node}")
+    # 二维矩阵
+    # direction_graph = np.array([
+    #     [1, 1, 1, 1, 1],
+    #     [1, 0, 0, 1, 1],
+    #     [1, 1, 1, 0, 1],
+    #     [1, 0, 1, 1, 1],
+    #     [1, 1, 1, 1, 1]
+    # ])
+    #
+    # start = (0, 0)  # 起点
+    # goal = (4, 4)  # 终点
+    # obstacles = [(1, 1), (1, 2), (2, 1)]  # 障碍物位置
+    # d = Dijkstra(graph=direction_graph, start=(0, 0), goal=(4, 3), is_grid=True)
+    # d.directed_map = obstacles
+    # path, dd, pre = d.search_dijkstra()
+    # print(d.grids)
+    # print(path)
